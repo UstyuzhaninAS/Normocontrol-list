@@ -1,0 +1,1830 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чек-лист нормоконтроля МФР</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --primary-dark: #003d82;
+            --bg-color: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #212529;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --hover-bg: #e9ecef;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: var(--text-color);
+            background-color: #ffffff;
+            line-height: 1.5;
+            margin: 0;
+            padding: 20px;
+        }
+        .mfr-checklist-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .checklist-header {
+            padding: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .checklist-header h2 { margin: 0; font-size: 1.25rem; }
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+        .progress-bar {
+            width: 150px;
+            height: 10px;
+            background-color: rgba(255,255,255,0.3);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .object-info {
+            padding: 20px;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .object-info .full-width { grid-column: 1 / -1; }
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .field-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #495057;
+        }
+        .field-group label .required { color: var(--danger-color); }
+        .field-group input,
+        .field-group select,
+        .field-group textarea {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background-color: white;
+        }
+        .field-group input:focus,
+        .field-group select:focus,
+        .field-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0,86,179,0.1);
+        }
+        .field-group input:disabled,
+        .field-group select:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .inline-group {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+        .inline-group > * { flex: 1; }
+        .inline-group button { flex: 0 0 auto; }
+        .multi-select-container {
+            position: relative;
+        }
+        .multi-select-display {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: white;
+            min-height: 38px;
+            cursor: pointer;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+        }
+        .multi-select-display:hover { border-color: var(--primary-color); }
+        .multi-select-tag {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .multi-select-tag .remove-tag {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .multi-select-placeholder { color: #999; font-size: 0.9rem; }
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .multi-select-dropdown.open { display: block; }
+        .multi-select-group-header {
+            padding: 6px 12px;
+            background-color: var(--bg-color);
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+        }
+        .multi-select-option {
+            padding: 6px 12px 6px 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        .multi-select-option:hover { background-color: var(--hover-bg); }
+        .multi-select-option.selected { background-color: #e7f0ff; }
+        .multi-select-option.selected::before {
+            content: "✓";
+            position: absolute;
+            left: 8px;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        .status-indicator {
+            padding: 10px 20px;
+            background-color: #fff3cd;
+            border-left: 4px solid var(--warning-color);
+            color: #856404;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator.active {
+            background-color: #d4edda;
+            border-left-color: var(--success-color);
+            color: #155724;
+        }
+        .file-upload-area {
+            padding: 15px 20px;
+            background-color: #f1f5ff;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .file-upload-label {
+            display: block;
+            padding: 15px;
+            border: 2px dashed var(--primary-color);
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            background-color: white;
+        }
+        .file-upload-label:hover { background-color: #e7f0ff; }
+        .file-upload-label input[type="file"] { display: none; }
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .file-info.visible { display: block; }
+        .file-info .file-name { font-weight: 600; color: var(--primary-color); }
+        .file-content {
+            margin-top: 10px;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            display: none;
+        }
+        .file-content.visible { display: block; }
+        .file-content h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        .controls {
+            padding: 10px 20px;
+            background-color: var(--bg-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .btn:hover:not(:disabled) { background-color: var(--hover-bg); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover:not(:disabled) { background-color: var(--primary-dark); }
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+        .btn-success:hover:not(:disabled) { background-color: #218838; }
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+        }
+        .btn-danger:hover:not(:disabled) { background-color: #c82333; }
+        .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+        .tree-root { padding: 20px; }
+        .section-category {
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .section-category > summary {
+            padding: 12px 16px;
+            background-color: var(--bg-color);
+            cursor: pointer;
+            font-weight: 600;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section-category > summary::-webkit-details-marker { display: none; }
+        .section-category > summary::before {
+            content: "▶";
+            font-size: 0.8rem;
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+        .section-category[open] > summary::before { transform: rotate(90deg); }
+        .section-category[open] > summary { border-bottom: 1px solid var(--border-color); }
+        .section-category .section-badge {
+            font-size: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: normal;
+        }
+        .nested {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .nested li {
+            padding: 12px 16px 12px 40px;
+            border-bottom: 1px solid #f1f1f1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .nested li:last-child { border-bottom: none; }
+        .nested li:hover { background-color: #f8fbff; }
+        .check-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .nested input[type="checkbox"] {
+            margin-top: 4px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+            flex-shrink: 0;
+        }
+        .nested input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+        }
+        .nested label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 0.95rem;
+        }
+        .nested label.disabled { cursor: not-allowed; opacity: 0.6; }
+        .nested .meta {
+            font-size: 0.75rem;
+            color: #6c757d;
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            align-self: flex-start;
+        }
+        .meta.tag-critical { background: #f8d7da; color: #721c24; }
+        .meta.tag-frequent { background: #fff3cd; color: #856404; }
+        .meta.tag-pd { background: #d1ecf1; color: #0c5460; }
+        .meta.tag-mgn { background: #d4edda; color: #155724; }
+        .meta.tag-pb { background: #f5c6cb; color: #721c24; }
+        .meta.tag-format { background: #e2e3e5; color: #383d41; }
+        .meta.tag-collision { background: #ffeeba; color: #856404; }
+        .comment-area { margin-left: 30px; display: none; }
+        .comment-area.visible { display: block; }
+        .comment-area textarea {
+            width: 100%;
+            min-height: 50px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+        .comment-area textarea:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { margin: 0; font-size: 1.1rem; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        .modal-body { padding: 20px; }
+        .modal-actions {
+            padding: 15px 20px;
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        /* Settings panel */
+        .settings-panel {
+            padding: 20px;
+            background-color: #fafbfc;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .settings-panel h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .settings-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .settings-row label {
+            min-width: 120px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .facsimile-preview {
+            width: 150px;
+            height: 60px;
+            border: 1px dashed var(--border-color);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            overflow: hidden;
+        }
+        .facsimile-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .facsimile-preview .placeholder {
+            font-size: 0.75rem;
+            color: #999;
+            text-align: center;
+        }
+        .item-list {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: white;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .item-list-row {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f1f1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .item-list-row:last-child { border-bottom: none; }
+        .item-list-row .role-badge {
+            font-size: 0.7rem;
+            background-color: #e7f0ff;
+            color: var(--primary-color);
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 8px;
+        }
+        /* Certificate sheet */
+        .cert-sheet {
+            padding: 40px;
+            background-color: white;
+            border: 1px solid #000;
+            font-family: "Times New Roman", Times, serif;
+            color: #000;
+        }
+        .cert-sheet h1 {
+            text-align: center;
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .cert-sheet h2 {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-top: 0;
+            margin-bottom: 30px;
+            font-weight: normal;
+        }
+        .cert-info {
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+        .cert-info .info-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .cert-info .info-label {
+            font-weight: bold;
+            min-width: 220px;
+        }
+        .cert-info .info-value {
+            flex: 1;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+        }
+        .cert-sections { margin: 25px 0; }
+        .cert-sections h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+        }
+        .cert-sections ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .cert-sections li {
+            padding: 4px 0;
+            font-size: 0.9rem;
+        }
+        .cert-sections li::before {
+            content: "✓ ";
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        .cert-sections li.with-comment::before {
+            content: "◉ ";
+            color: var(--warning-color);
+        }
+        .cert-sections .comment-text {
+            margin-left: 20px;
+            font-size: 0.85rem;
+            font-style: italic;
+            color: #555;
+        }
+        .cert-signature {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+        }
+        .cert-signature .signature-block { flex: 1; }
+        .cert-signature .signature-line {
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .cert-signature .facsimile {
+            text-align: center;
+            margin-bottom: 5px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cert-signature .facsimile img {
+            max-width: 200px;
+            max-height: 60px;
+            object-fit: contain;
+        }
+        .cert-signature .facsimile-text {
+            font-family: 'Brush Script MT', cursive;
+            font-size: 1.8rem;
+            color: #003366;
+            font-style: italic;
+        }
+        .cert-footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ccc;
+            font-size: 0.8rem;
+            color: #666;
+            text-align: center;
+        }
+        @media print {
+            body * { visibility: hidden; }
+            .cert-sheet, .cert-sheet * { visibility: visible; }
+            .cert-sheet {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none;
+                padding: 20mm;
+            }
+            .modal-overlay {
+                position: static;
+                background: none;
+                display: block !important;
+            }
+            .modal-content {
+                box-shadow: none;
+                max-height: none;
+                max-width: none;
+            }
+            .modal-header, .modal-actions { display: none !important; }
+        }
+        @media (max-width: 768px) {
+            .object-info { grid-template-columns: 1fr; }
+            .cert-signature { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="mfr-checklist-container">
+    <div class="checklist-header">
+        <h2>🏗️ Чек-лист нормоконтроля МФР</h2>
+        <div class="progress-container">
+            <span>Прогресс:</span>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <span id="progressText">0%</span>
+        </div>
+    </div>
+
+    <!-- Настройки: проекты, разделы, проверяющие -->
+    <div class="settings-panel">
+        <h3>⚙️ Настройки проверки</h3>
+
+        <!-- Проект -->
+        <div class="settings-row">
+            <label>Проект <span class="required">*</span></label>
+            <div class="inline-group" style="flex: 1;">
+                <select id="projectSelect" style="flex: 1;">
+                    <option value="">— выберите проект —</option>
+                </select>
+                <button class="btn btn-sm" onclick="openProjectModal()">+ Проект</button>
+                <button class="btn btn-sm" onclick="importProjects()">📥 Импорт</button>
+            </div>
+        </div>
+
+        <!-- Разделы документации -->
+        <div class="settings-row">
+            <label>Разделы <span class="required">*</span></label>
+            <div class="multi-select-container" style="flex: 1;" id="sectionsContainer">
+                <div class="multi-select-display" onclick="toggleSectionsDropdown()">
+                    <span class="multi-select-placeholder" id="sectionsPlaceholder">— выберите разделы документации —</span>
+                </div>
+                <div class="multi-select-dropdown" id="sectionsDropdown"></div>
+            </div>
+        </div>
+
+        <!-- Проверяющий -->
+        <div class="settings-row">
+            <label>Проверяющий <span class="required">*</span></label>
+            <div class="inline-group" style="flex: 1;">
+                <select id="inspectorSelect" style="flex: 1;">
+                    <option value="">— выберите проверяющего —</option>
+                </select>
+                <button class="btn btn-sm" onclick="openInspectorModal()">+ Сотрудник</button>
+                <button class="btn btn-sm" onclick="importInspectors()">📥 Импорт</button>
+            </div>
+        </div>
+
+        <!-- Дата -->
+        <div class="settings-row">
+            <label>Дата проверки <span class="required">*</span></label>
+            <input type="date" id="checkDate" style="flex: 1; max-width: 200px;">
+        </div>
+    </div>
+
+    <!-- Статус -->
+    <div class="status-indicator" id="statusIndicator">
+        <span class="status-icon">⚠️</span>
+        <span id="statusText">Для начала работы заполните все обязательные поля: выберите проект, разделы и проверяющего</span>
+    </div>
+
+    <!-- Загрузка замечаний МФР -->
+    <div class="file-upload-area">
+        <label class="file-upload-label" for="mfrFileInput">
+            <div style="font-size: 1.5rem; margin-bottom: 5px;">📄</div>
+            <div><strong>Загрузить замечания МФР (.docx)</strong></div>
+            <div style="font-size: 0.85rem; color: #495057;">Нажмите или перетащите файл</div>
+            <input type="file" id="mfrFileInput" accept=".docx">
+        </label>
+        <div class="file-info" id="fileInfo">
+            <div>Загружен файл: <span class="file-name" id="fileName"></span></div>
+            <div>Размер: <span id="fileSize"></span></div>
+            <div>Дата загрузки: <span id="fileDate"></span></div>
+        </div>
+        <button class="btn btn-sm" id="toggleContentBtn" style="margin-top: 10px; display: none;" onclick="toggleFileContent()">📖 Показать/скрыть содержимое</button>
+        <div class="file-content" id="fileContent">
+            <h3>📋 Содержимое документа</h3>
+            <div id="fileContentBody"></div>
+        </div>
+    </div>
+
+    <!-- Управление -->
+    <div class="controls">
+        <button class="btn" onclick="toggleAll(true)">Развернуть все</button>
+        <button class="btn" onclick="toggleAll(false)">Свернуть все</button>
+        <button class="btn btn-primary" onclick="exportData()">💾 Сохранить</button>
+        <button class="btn btn-success" id="generateCertBtn" onclick="openCertModal()" disabled>📋 Сформировать удостоверяющий лист</button>
+        <button class="btn btn-danger" onclick="resetChecklist()">🗑️ Сбросить</button>
+    </div>
+
+    <!-- Дерево чек-листа -->
+    <div class="tree-root" id="checklistTree">
+        <div class="empty-state">Выберите разделы документации для формирования чек-листа</div>
+    </div>
+</div>
+
+<!-- Модалка: добавление проекта -->
+<div class="modal-overlay" id="projectModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Добавление проекта</h3>
+            <button class="modal-close" onclick="closeModal('projectModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="field-group" style="margin-bottom: 15px;">
+                <label>Полное наименование проекта <span class="required">*</span></label>
+                <textarea id="newProjectName" rows="4" placeholder="Например: Жилой дом с подземной автостоянкой..."></textarea>
+            </div>
+            <div class="field-group">
+                <label>Краткое название (для отображения)</label>
+                <input type="text" id="newProjectShort" placeholder="Например: Гарибальди 27">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeModal('projectModal')">Отмена</button>
+            <button class="btn btn-primary" onclick="addProject()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: добавление проверяющего -->
+<div class="modal-overlay" id="inspectorModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Добавление сотрудника</h3>
+            <button class="modal-close" onclick="closeModal('inspectorModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="field-group" style="margin-bottom: 15px;">
+                <label>ФИО <span class="required">*</span></label>
+                <input type="text" id="newInspectorName" placeholder="Иванов Иван Иванович">
+            </div>
+            <div class="field-group" style="margin-bottom: 15px;">
+                <label>Роль <span class="required">*</span></label>
+                <select id="newInspectorRole">
+                    <option value="ГИП">ГИП (Главный инженер проекта)</option>
+                    <option value="ГАП">ГАП (Главный архитектор проекта)</option>
+                    <option value="Нормоконтроль">Нормоконтроль</option>
+                    <option value="ГИК">ГИК (Главный инженер-конструктор)</option>
+                    <option value="ГИОС">ГИОС (Инженер по ОВ, ВК)</option>
+                    <option value="ГИЭ">ГИЭ (Инженер-электрик)</option>
+                    <option value="Проверяющий">Проверяющий</option>
+                    <option value="Ответственный исполнитель">Ответственный исполнитель</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Факсимиле (подпись) — файл с именем «Фамилия.png/jpg»</label>
+                <input type="file" id="newInspectorFacsimile" accept="image/*">
+                <div style="font-size: 0.8rem; color: #666; margin-top: 4px;">
+                    Имя файла будет автоматически использовано как идентификатор факсимиле
+                </div>
+                <div class="facsimile-preview" id="facsimilePreview" style="margin-top: 10px;">
+                    <span class="placeholder">Предпросмотр факсимиле</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeModal('inspectorModal')">Отмена</button>
+            <button class="btn btn-primary" onclick="addInspector()">Добавить</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка: удостоверяющий лист -->
+<div class="modal-overlay" id="certModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📋 Удостоверяющий лист</h3>
+            <button class="modal-close" onclick="closeModal('certModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="cert-sheet" id="certSheet"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" onclick="closeModal('certModal')">Закрыть</button>
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Печать / PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- Скрытые input для импорта -->
+<input type="file" id="importProjectsFile" accept=".json,.csv" style="display: none;">
+<input type="file" id="importInspectorsFile" accept=".json,.csv" style="display: none;">
+
+<script>
+// ==================== ДАННЫЕ ====================
+
+// Разделы ПД (по 87 постановлению) и РД
+const DOCUMENT_SECTIONS = [
+    { group: "Проектная документация (Постановление 87)", sections: [
+        { code: "ПЗ", name: "ПЗ — Пояснительная записка" },
+        { code: "СПОЗУ", name: "СПОЗУ — Схема планировочной организации земельного участка" },
+        { code: "АР", name: "АР — Архитектурные решения" },
+        { code: "КР", name: "КР — Конструктивные решения" },
+        { code: "ИОС1", name: "ИОС раздел 1 — Сведения об инженерном оборудовании (система электроснабжения)" },
+        { code: "ИОС2", name: "ИОС раздел 2 — Система водоснабжения" },
+        { code: "ИОС3", name: "ИОС раздел 3 — Система водоотведения" },
+        { code: "ИОС4", name: "ИОС раздел 4 — Отопление, вентиляция, кондиционирование" },
+        { code: "ИОС5", name: "ИОС раздел 5 — Сети связи" },
+        { code: "ИОС6", name: "ИОС раздел 6 — Газоснабжение" },
+        { code: "ПОС", name: "ПОС — Проект организации строительства" },
+        { code: "ПОР", name: "ПОР — Проект организации работ по сносу/демонтажу" },
+        { code: "ООС", name: "ООС — Мероприятия по охране окружающей среды" },
+        { code: "ПБ", name: "ПБ — Мероприятия по обеспечению пожарной безопасности" },
+        { code: "ОДИ", name: "ОДИ — Мероприятия по обеспечению доступа инвалидов" },
+        { code: "СМ", name: "СМ — Сметная документация" },
+        { code: "ИД", name: "ИД — Иная документация" }
+    ]},
+    { group: "Рабочая документация — Архитектура", sections: [
+        { code: "АР0", name: "АР0 — Архитектурные решения (общие)" },
+        { code: "АР0 Подзем", name: "АР0 Подзем — Подземная часть" },
+        { code: "АР1", name: "АР1 — 1-й этаж / подземная часть" },
+        { code: "АР2", name: "АР2 — Наземная часть (типовые этажи)" },
+        { code: "АР3", name: "АР3 — Кровля" },
+        { code: "АР4", name: "АР4 — ОДИ (обеспечение доступа инвалидов)" },
+        { code: "АР5", name: "АР5 — СТК (сантехкабины)" },
+        { code: "АПР", name: "АПР — Архитектурно-планировочные решения" },
+        { code: "АИ1", name: "АИ1 — Интерьеры квартир" },
+        { code: "АИ2", name: "АИ2 — Интерьеры МОП" },
+        { code: "АИ3", name: "АИ3 — Интерьеры ЦИН" }
+    ]},
+    { group: "Рабочая документация — Конструкции", sections: [
+        { code: "КЖ0", name: "КЖ0 — Нулевой цикл / котлован" },
+        { code: "КЖ0.1", name: "КЖ0.1 — Свайное основание" },
+        { code: "КЖ0.2", name: "КЖ0.2 — Гидроизоляция" },
+        { code: "КЖ1", name: "КЖ1 — Фундаментная плита" },
+        { code: "КЖ2", name: "КЖ2 — Стены подвала / вертикальные конструкции" },
+        { code: "КЖ3", name: "КЖ3 — Плита перекрытия / горизонтальные конструкции" },
+        { code: "КЖ4", name: "КЖ4 — Вертикальные конструкции типового этажа" },
+        { code: "КЖ5", name: "КЖ5 — Стены типового этажа" },
+        { code: "КЖ6", name: "КЖ6 — Модули / сборные конструкции" },
+        { code: "КЖ7", name: "КЖ7 — Технический этаж" },
+        { code: "КЖ8", name: "КЖ8 — Кровельная надстройка" },
+        { code: "КЖ9", name: "КЖ9 — Лестницы" },
+        { code: "КЖ10", name: "КЖ10 — Прочие ж/б конструкции" },
+        { code: "КЖИ", name: "КЖИ — Сборные изделия (модули)" },
+        { code: "КМ", name: "КМ — Металлоконструкции" }
+    ]},
+    { group: "Рабочая документация — Инженерные системы", sections: [
+        { code: "ОВ1", name: "ОВ1 — Отопление" },
+        { code: "ОВ2", name: "ОВ2 — Вентиляция и кондиционирование" },
+        { code: "ВК1", name: "ВК1 — Водоснабжение" },
+        { code: "ВК2", name: "ВК2 — Водоотведение / канализация" },
+        { code: "ВК", name: "ВК — Водоснабжение и канализация (общий)" },
+        { code: "НС", name: "НС — Насосная станция" },
+        { code: "НВ", name: "НВ — Наружные сети водоснабжения" },
+        { code: "ТМ", name: "ТМ — Тепломеханические решения (ИТП, ЦТП)" },
+        { code: "АТМ", name: "АТМ — Автоматизация тепломеханических решений" },
+        { code: "УУТЭ", name: "УУТЭ — Узел учета тепловой энергии" },
+        { code: "ЭОМ1", name: "ЭОМ1 — Электроснабжение (силовое)" },
+        { code: "ЭОМ2", name: "ЭОМ2 — Электроосвещение" },
+        { code: "ЭОМ3", name: "ЭОМ3 — Квартирная электрика" },
+        { code: "ЭОМ4", name: "ЭОМ4 — Электроснабжение нежилых помещений" },
+        { code: "ЭОМ5", name: "ЭОМ5 — Прочие электротехнические решения" },
+        { code: "МЗ", name: "МЗ — Молниезащита и заземление" },
+        { code: "ВТ", name: "ВТ — Вертикальный транспорт (лифты)" }
+    ]},
+    { group: "Рабочая документация — Слаботочные системы и автоматизация", sections: [
+        { code: "СПА", name: "СПА — Система пожарной автоматизации" },
+        { code: "АПТ", name: "АПТ — Автоматическое пожаротушение" },
+        { code: "АСДКиУ", name: "АСДКиУ — Автоматизация и диспетчеризация" },
+        { code: "АСУПР", name: "АСУПР — Автоматизированная система управления" },
+        { code: "АСКУВТ", name: "АСКУВТ — АСКУЭ (учет энергии)" },
+        { code: "АИИСКУЭ", name: "АИИСКУЭ — Автоматизированная система коммерческого учета" },
+        { code: "СКУД", name: "СКУД — Система контроля доступа" },
+        { code: "СВН", name: "СВН — Система видеонаблюдения" },
+        { code: "СКТВ", name: "СКТВ — Система кабельного телевидения" },
+        { code: "ШПД", name: "ШПД — Широкополосная сеть передачи данных" },
+        { code: "ПВ", name: "ПВ — Проводное вещание" },
+        { code: "ККЗ", name: "ККЗ — Каналы кабельных сетей / закладные" },
+        { code: "АК", name: "АК — Автоматизация инженерных систем" }
+    ]},
+    { group: "Рабочая документация — Светопрозрачные конструкции и прочее", sections: [
+        { code: "ПВХ", name: "ПВХ — Оконные и балконные блоки" },
+        { code: "ПВХ витражи", name: "ПВХ витражи — Наружные витражи" },
+        { code: "ПВХ внутр. витражи", name: "ПВХ внутр. витражи — Внутренние витражи" },
+        { code: "ГП", name: "ГП — Генеральный план / благоустройство" },
+        { code: "ПЗУ", name: "ПЗУ — План организации земельного участка" },
+        { code: "ТХ", name: "ТХ — Технологические решения" },
+        { code: "ОЗДС", name: "ОЗДС — Ограждающие конструкции" }
+    ]}
+];
+
+// Все коды разделов плоским списком
+const ALL_SECTION_CODES = DOCUMENT_SECTIONS.flatMap(g => g.sections.map(s => s.code));
+
+// Проекты (предзаполненные)
+let projects = [
+    {
+        id: "p1",
+        name: "Жилой дом с подземной автостоянкой, инженерными сетями и благоустройством территории (со сносом жилых зданий по адресу: ул. Гарибальди д.27 к.2, ул. Гарибальди д.27 к.3, ул. Гарибальди д.29 к.1) по адресу: г. Москва, внутригородское муниципальное образование Черемушки, улица Гарибальди, земельный участок 27, зоны 6.3 и 6.4, ЮЗАО",
+        short: "Гарибальди 27 (зоны 6.3-6.4)"
+    },
+    {
+        id: "p2",
+        name: "Жилой дом с приспособлением подземной автостоянки под защитное сооружение гражданской обороны – «укрытие» (ЗСГО) с инженерными сетями и благоустройством территории (со сносом жилых зданий по адресу: ул. Гарибальди д.29 к.2, ул. Гарибальди д.29 к.3, ул. Гарибальди д.31, к.1) по адресу: г. Москва, внутригородское муниципальное образование Черемушки, улица Гарибальди, земельный участок 29, зоны 6.5 и 6.6, ЮЗАО",
+        short: "Гарибальди 29 (ЗСГО, зоны 6.5-6.6)"
+    }
+];
+
+// Проверяющие (предзаполненные)
+let inspectors = [
+    { id: "i1", name: "Иванов Иван Иванович", role: "ГИП", facsimile: null },
+    { id: "i2", name: "Петров Петр Петрович", role: "ГАП", facsimile: null },
+    { id: "i3", name: "Сидоров Сидор Сидорович", role: "Нормоконтроль", facsimile: null },
+    { id: "i4", name: "Кузнецов Алексей Михайлович", role: "ГИК", facsimile: null },
+    { id: "i5", name: "Смирнова Ольга Николаевна", role: "ГИОС", facsimile: null },
+    { id: "i6", name: "Попов Дмитрий Сергеевич", role: "ГИЭ", facsimile: null }
+];
+
+// Чек-лист: пункты с привязкой к разделам
+const CHECKLIST_DATA = [
+    {
+        category: "Общие требования (все разделы)",
+        sections: ["ALL"],
+        checks: [
+            { text: "В спецификации оборудования напротив каждой позиции в графе «Примечание» указана фраза «или аналог».", tag: "Критично", tagClass: "tag-critical" },
+            { text: "Все характеристики (марки бетона, классы арматуры, диаметры труб, типы оборудования) сверены с ПД, получившей положительное заключение МГЭ.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "PDF-файлы сформированы в векторном виде с распознаваемым текстом (не растр).", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Боковые штампы содержат подписи согласования смежных разделов и ГАП/ГИП.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Лист разрешения изменений заполнен по форме 9 ГОСТ Р 21.101-2020 с указанием номеров листов и области изменений.", tag: "Критично", tagClass: "tag-critical" },
+            { text: "Подготовлены развернутые ответы на замечания МФР в виде отдельного файла.", tag: "Критично", tagClass: "tag-critical" },
+            { text: "Исключены пустые титульные листы без виз согласования. Нумерация листов сквозная.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Отсутствуют несоответствия между смежными разделами (коллизии).", tag: "Коллизия", tagClass: "tag-collision" }
+        ]
+    },
+    {
+        category: "ПЗ — Пояснительная записка",
+        sections: ["ПЗ"],
+        checks: [
+            { text: "В «Справке ГИПа» приведено заверение о соответствии РД требованиям норм.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "В ведомости ссылочных документов указаны актуальные редакции СП, ГОСТ, Постановлений (в т.ч. №516-ПП с изм. ПП-470, ПП-1776).", tag: "Нормативы", tagClass: "tag-pd" }
+        ]
+    },
+    {
+        category: "СПОЗУ / ПЗУ / ГП",
+        sections: ["СПОЗУ", "ПЗУ", "ГП"],
+        checks: [
+            { text: "Отметка 0.000 соответствует ПД АР и абсолютным отметкам в Балтийской системе высот.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Привязка сетки квадратов выполнена к геодезической сетке или разбивочному базису.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Показаны границы работ, литеры границ участка по ГПЗУ.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Представлены согласования балансодержателя территории и ГБУ «Мосгоргеотрест».", tag: "Согласования", tagClass: "tag-format" },
+            { text: "Сводный план инженерных сетей представлен в полном объеме и читаемом виде.", tag: "Читаемость", tagClass: "tag-format" }
+        ]
+    },
+    {
+        category: "АР — Архитектурные решения",
+        sections: ["АР", "АР0", "АР0 Подзем", "АР1", "АР2", "АР3", "АР4", "АР5", "АПР"],
+        checks: [
+            { text: "Площади помещений, экспликация и квартирография соответствуют ПД (заключение МГЭ).", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Определение относительной отметки 0.000 приведено к ПД АР.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "На планах представлена компоновочная схема здания с указанием номера секции и этажности.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Показано сопряжение секций через деформационные швы с привязкой к базовым осям.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Представлены характеристики здания: высота, кол-во этажей, ветровой район.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Приведены типы наружных стен, узлы примыканий, терморазъёмы.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Замаркированы сантехнические модули/СТК на маркировочных планах.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Показаны места размещения встроенных шкафов, почтовых ящиков, корзин для кондиционеров.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "В АР не указаны конкретные характеристики финишных материалов (цвет, артикул, производитель) — это относится к АИ.", tag: "Коллизия АР-АИ", tagClass: "tag-collision" },
+            { text: "Обеспечены требования МГН: ширина проемов, высота порогов (не более 14 мм для квартир МГН), контрастные наклейки.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Указаны пределы огнестойкости дверей, витражей, перегородок в соответствии с ПБ.", tag: "ПБ", tagClass: "tag-pb" }
+        ]
+    },
+    {
+        category: "АИ — Интерьеры",
+        sections: ["АИ1", "АИ2", "АИ3"],
+        checks: [
+            { text: "В АИ не дублируются спецификации инженерного оборудования — даны ссылки на ЭОМ, ВК, ОВ.", tag: "Коллизия", tagClass: "tag-collision" },
+            { text: "Для одного типа финишной отделки применено одно графическое обозначение без привязки к конструктиву.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Высота жилых помещений в чистовой отделке не менее 2.65 м (для натяжных потолков).", tag: "Частое", tagClass: "tag-frequent" },
+            { text: "Представлены узлы примыкания напольных покрытий к порогам СТК, лоджий, входных дверей.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Высота порога в квартире инвалида — 14 мм, с Г-образными уголками, указанными на планах и в спецификации.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Указано колористическое решение дверей, откосов (RAL 9003/9016 для откосов).", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Для межкомнатных дверей указан производитель, коллекция, артикул — ориентир для подбора аналогов.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Применена различная по дизайну плитка для кухонного «фартука» и стен санузлов.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Для отделки стен в квартирах применена керамическая плитка стандартных размеров (200x300, 300x300, 402x402, 600x600).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "В случае натяжных потолков представлены узлы крепления люстр, пожарных датчиков, примыкания к стенам всех типов.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Информация о порогах в АИ приведена к взаимному соответствию с экспликациями полов и планами АР.", tag: "Коллизия", tagClass: "tag-collision" }
+        ]
+    },
+    {
+        category: "КЖ — Железобетонные конструкции",
+        sections: ["КР", "КЖ0", "КЖ0.1", "КЖ0.2", "КЖ1", "КЖ2", "КЖ3", "КЖ4", "КЖ5", "КЖ6", "КЖ7", "КЖ8", "КЖ9", "КЖ10", "КЖИ", "КМ"],
+        checks: [
+            { text: "Представлены расчеты на продавливание фундаментной плиты и перекрытий (по методике НИИЖБ и СП 430, п. 5.1.8) — особенно у торцов стен, пилонов, участков, ослабленных проемами.", tag: "Критично", tagClass: "tag-critical" },
+            { text: "Площадь установленного армирования соответствует изополям из расчетного тома ПД. Отклонения обоснованы.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Представлены актуальные результаты расчета с учетом всех отверстий более 500x500 мм.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Разработаны узлы обрамления групп проемов с указанием армирования перемычек и анкеровки обрамляющей арматуры.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Представлена деталь стыковки стержней диаметром >28 мм с указанием длины нахлеста и разбежки стыков.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "В общих указаниях представлена запись о допустимых зонах стыковки продольной арматуры в плитах (на опоре / в пролёте).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Предусмотрены закладные детали ЭОМ, СС, молниезащиты в теле конструкций (или дана ссылка на отдельный комплект).", tag: "Критично", tagClass: "tag-critical" },
+            { text: "Предусмотрены решения по молниезащите и заземлению здания.", tag: "Критично", tagClass: "tag-critical" },
+            { text: "Представлены решения по гидроизоляции: деформационных швов (гидрошпонки П-образного типа), РШБ, монтажных отверстий, вводов инженерных коммуникаций.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Схема расположения отверстий в КЖ соответствует ПД. Отклонения обоснованы.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "На листе общих данных указаны допустимые нагрузки на плиту перекрытия (в тексте или в виде таблицы).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Указана толщина всех конструкций, длины выпусков от уровня верха плиты.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Марки бетона по морозостойкости и водонепроницаемости соответствуют ПД.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Представлены узлы сопряжения балок с вертикальными конструкциями с учетом расположения вертикальной арматуры.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Для сборных модулей представлены комплекты КЖИ, указана маркировка, предельно допустимые нагрузки на горизонтальные поверхности.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "В расчете прогибов плиты учтен сниженный модуль деформации 0,2·Eb (трещинообразование).", tag: "Проектные решения", tagClass: "tag-frequent" }
+        ]
+    },
+    {
+        category: "ОВ — Отопление, вентиляция",
+        sections: ["ИОС4", "ОВ1", "ОВ2"],
+        checks: [
+            { text: "На поэтажных планах указаны высотные отметки чистого пола.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "На планах показано направление потока воздуха для систем дымоудаления, компенсации и притока в зону безопасности.", tag: "Частое", tagClass: "tag-frequent" },
+            { text: "Для центрально-вытяжных шахт указаны: количество воздуха, площадь живого сечения решеток, отметка шахты.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Схемы противодымной вентиляции дополнены отметками этажей, указана высота установки клапанов.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "На планах показана установка приточных клапанов, их количество, расход воздуха через клапан.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Планы всех этажей дополнены сантехническим оборудованием помещений санузлов и ванных комнат.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Представлены условия подключения (ТУ) от теплоснабжающей организации.", tag: "Согласования", tagClass: "tag-format" },
+            { text: "Расчетные параметры внутреннего воздуха соответствуют ПД (ИОС4.1).", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Приборы отопления установлены по оси окна, за исключением приборов больших габаритов (балконный блок).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Элементы креплений воздуховодов имеют пределы огнестойкости не менее нормируемых для воздуховодов.", tag: "ПБ", tagClass: "tag-pb" }
+        ]
+    },
+    {
+        category: "ВК — Водоснабжение и водоотведение",
+        sections: ["ИОС2", "ИОС3", "ВК", "ВК1", "ВК2", "НС", "НВ"],
+        checks: [
+            { text: "Для обеспечения допустимого уровня шума не допускается крепление санитарных приборов и трубопроводов непосредственно к межквартирным стенам.", tag: "Частое", tagClass: "tag-frequent" },
+            { text: "В местах прохода пластиковых трубопроводов через стены с нормируемым пределом огнестойкости предусмотрены противопожарные муфты с обеих сторон.", tag: "ПБ", tagClass: "tag-pb" },
+            { text: "При горизонтальном подключении лежака к стояку К1 в МОП установлена противопожарная муфта не только под перекрытием, но и на горизонтали.", tag: "ПБ", tagClass: "tag-pb" },
+            { text: "У основания стояков В1, Т3, Т4 предусмотрен шаровой кран с электроприводом (класс защиты не менее II) с контролем положения.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Предусмотрен отвод конденсата от сплит-систем помещений ЦИН, СС, КПМПТЦ с разрывом струи через гидрозатворы.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Унитазы для инвалидов имеют увеличенный размер (высота 0.45-0.5 м, длина 0.7 м) и поручень.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Высота установки ванны в санузлах квартир инвалидов — 500 мм от пола до верха борта, в остальных — 600 мм.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "На разрезах канализации указано: отсутствуют отклонения стояков от вертикальной оси более 2 мм на 1 м.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "После внеквартирных узлов учета предусмотрено параллельное подключение нескольких санузлов в квартире.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Смесители для ванны и умывальника — различные (не одинаковые).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Мойка из нержавеющей стали с переливным трубопроводом, толщиной стали не менее 0.6 мм, размер сливного шланга не менее 500x600.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Таблица основных показателей расхода указана в комплекте НС (по ГОСТ).", tag: "Оформление", tagClass: "tag-format" },
+            { text: "На стояках систем водоснабжения и водоотведения промаркированы этажи.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "На схемах канализации указана высота вытяжной части фанового стояка.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Квартиры инвалидов обозначены на планах, схемах и разрезах (значок МГН, этажи).", tag: "МГН", tagClass: "tag-mgn" }
+        ]
+    },
+    {
+        category: "ЭОМ — Электроснабжение и освещение",
+        sections: ["ИОС1", "ЭОМ1", "ЭОМ2", "ЭОМ3", "ЭОМ4", "ЭОМ5", "МЗ"],
+        checks: [
+            { text: "Исключено применение импортного оборудования при наличии отечественного аналога.", tag: "Частое", tagClass: "tag-frequent" },
+            { text: "Представлено описание решений по сохранению работоспособности кабельных линий СПЗ в условиях пожара.", tag: "ПБ", tagClass: "tag-pb" },
+            { text: "Выключатели освещения установлены со стороны дверной ручки (во всех жилых комнатах, кухнях, с/у).", tag: "Частое", tagClass: "tag-frequent" },
+            { text: "Номиналы трансформаторов тока на вводных панелях ВРУ соответствуют согласованной ПД и письму Мосэнергосбыт.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "В общих данных предусмотрена запись о применении световых указателей постоянного действия.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "На схемах ЩК указаны группы для питания розеток в коридоре.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Номера групп питания розеток и светильников на планах соответствуют схемам ЩК.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Уточнены привязки розеток в ванной комнате (не попадают в зону 2 по ГОСТ Р 50571.7.701).", tag: "ПБ", tagClass: "tag-pb" },
+            { text: "Представлена методика расчета электрических нагрузок.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Обосновано соединение шины ГЗШ ИТП в системе ОСУП.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "На планах указаны места присоединения к молниеприемной сетке для оборудования подвижной радиотелефонной связи.", tag: "Проектные решения", tagClass: "tag-frequent" }
+        ]
+    },
+    {
+        category: "ВТ — Вертикальный транспорт (лифты)",
+        sections: ["ВТ"],
+        checks: [
+            { text: "Система управления лифтами — групповая.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "В комплектацию оборудования включены перила на крыше кабины высотой 900 мм.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Выполнено требование минимального бокового расстояния от оси любой кнопки до угла стен.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Оборудование переговорной связи лифтов (УПСЛ) учтено в комплекте ВТ, а не в АСДКиУ.", tag: "Коллизия", tagClass: "tag-collision" }
+        ]
+    },
+    {
+        category: "СПА / АПТ — Пожарная автоматика",
+        sections: ["СПА", "АПТ"],
+        checks: [
+            { text: "Управление системой подпора в незадымляемую лестничную клетку по положению двери соответствует решениям ИОС4.1.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Сигнал на открытие задвижки ВУ формируется в случае запуска насоса ВПВ (исключен сигнал от ДППК).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Исключено формирование сигналов управления СПДВ по сигналам от ИПР.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Исключено открытое размещение МР-А в квартирах (представлен эскиз размещения в квартирных шкафах).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Представлен алгоритм работы ВТ в случае пожара с применением дополнительных РМ для передачи сигналов в ШУЛ.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Пожарные краны применены в комплекте с датчиком положения пожарного клапана (ДППК).", tag: "ПБ", tagClass: "tag-pb" },
+            { text: "На планах указаны отметки оросителей, защищающих воздуховоды сечением ≥750 мм.", tag: "ПБ", tagClass: "tag-pb" }
+        ]
+    },
+    {
+        category: "СКУД / СВН / СКТВ / ШПД — Слаботочные системы",
+        sections: ["СКУД", "СВН", "СКТВ", "ШПД", "ККЗ", "ПВ"],
+        checks: [
+            { text: "Предусмотрено резервирование электропитания оборудования на время автономной работы не менее 60 мин.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Указания по высоте размещения трубок в квартирах соответствуют ЗнП.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Исключено размещение блоков вызова на боковой стене (размещены на малых створках входных дверей).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Исключены камеры видеонаблюдения в местах отсутствия въезда на придомовую территорию.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Указания по высоте установки камер видеонаблюдения за въездами на придомовую территорию.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Количество ИБП соответствует графической части проекта.", tag: "Коллизия", tagClass: "tag-collision" },
+            { text: "Место размещения розеток для постамата соответствует АИ (почтовые ящики).", tag: "Коллизия", tagClass: "tag-collision" },
+            { text: "Высота установки розеток для ЖК-панели соответствует ЗнП.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Представлены согласования ГБУ «ИМЦ», АНО «МПТЦ», операторов связи.", tag: "Согласования", tagClass: "tag-format" }
+        ]
+    },
+    {
+        category: "АК / АСДКиУ / АСУПР — Автоматизация и диспетчеризация",
+        sections: ["АК", "АСДКиУ", "АСУПР", "АСКУВТ", "АИИСКУЭ"],
+        checks: [
+            { text: "Обоснован способ формирования сигналов аварии систем с передачей в АСДКиУ.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Представлено описание алгоритма работы общеобменной вентиляции помещения СС на кровле.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Исключены решения по автоматизации вентиляции БКТ (помещения не оснащаются механической вентиляцией).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Решения по автоматизации дренажных приямков увязаны с комплектом ВК1.", tag: "Коллизия", tagClass: "tag-collision" },
+            { text: "Способ подключения ОДПУ тепла соответствует ЗнП.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Решения по контролю входных дверей в подъезд увязаны с комплектом СКУД.", tag: "Коллизия", tagClass: "tag-collision" }
+        ]
+    },
+    {
+        category: "ПВХ — Светопрозрачные конструкции",
+        sections: ["ПВХ", "ПВХ витражи", "ПВХ внутр. витражи"],
+        checks: [
+            { text: "Формулы стеклопакетов в КД соответствуют РД АР и ПД ЭЭ.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Цвет профиля соответствует РД АР и согласованному АГР.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Приведены сечения всех применяемых ПВХ-профилей с размерами, артикулами, моментами инерции.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Доработаны узлы примыкания: показаны крепежные элементы, герметизирующие материалы (ПСУЛ, паро-, гидроизоляция), опорные подкладки.", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Высота порога балконных дверей в квартирах — не более 14 мм.", tag: "МГН", tagClass: "tag-mgn" },
+            { text: "Представлен комплект прилагаемой документации: расчет импостов, диаграммы размеров створок, декларации соответствия, протоколы испытаний, заключения ФАУ «ФЦС».", tag: "Прилагаемая документация", tagClass: "tag-critical" },
+            { text: "Для огнестойких витражей (EI30) предусмотрены термоизолированные профили с терморазрывами и огнестойкое заполнение.", tag: "ПБ", tagClass: "tag-pb" },
+            { text: "Показаны места установки петель, ручек (на высоте 0.85-1.1 м от у.ч.п.), доводчиков, замков, контрастных наклеек.", tag: "МГН", tagClass: "tag-mgn" }
+        ]
+    },
+    {
+        category: "ТМ / УУТЭ / НС — Тепломеханические решения и узлы учета",
+        sections: ["ТМ", "АТМ", "УУТЭ", "НС"],
+        checks: [
+            { text: "Принципиальная и функциональная схемы ИТП соответствуют ПД, получившей положительное заключение МГЭ.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Спецификация оборудования соответствует ПД.", tag: "ПД", tagClass: "tag-pd" },
+            { text: "Представлены согласования ПАО «МОЭК», АО «Мосэнергосбыт».", tag: "Согласования", tagClass: "tag-format" },
+            { text: "Расход тепловой энергии на ГВС определен с учетом коэффициентов для систем без/с полотенцесушителями (по СП).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Количество всасывающих линий к насосной станции — не менее двух (насосы запитаны от 2-х полуколец).", tag: "Проектные решения", tagClass: "tag-frequent" },
+            { text: "Под насосным оборудованием предусмотрен фундамент с указанием габаритов.", tag: "Оформление", tagClass: "tag-format" },
+            { text: "Подключение насосов принято в соответствии с листом подбора завода-изготовителя.", tag: "Оформление", tagClass: "tag-format" }
+        ]
+    }
+];
+
+// ==================== СОСТОЯНИЕ ====================
+let state = {
+    projectId: null,
+    selectedSections: [],
+    inspectorId: null,
+    checkDate: new Date().toISOString().split('T')[0],
+    checks: {},
+    comments: {},
+    fileInfo: null,
+    facsimiles: {} // { inspectorId: base64 }
+};
+
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    renderProjectsSelect();
+    renderInspectorsSelect();
+    renderSectionsDropdown();
+    document.getElementById('checkDate').value = state.checkDate;
+
+    // Обработчики
+    document.getElementById('projectSelect').addEventListener('change', e => {
+        state.projectId = e.target.value;
+        saveState();
+        updateStatus();
+    });
+    document.getElementById('inspectorSelect').addEventListener('change', e => {
+        state.inspectorId = e.target.value;
+        saveState();
+        updateStatus();
+    });
+    document.getElementById('checkDate').addEventListener('change', e => {
+        state.checkDate = e.target.value;
+        saveState();
+    });
+    document.getElementById('mfrFileInput').addEventListener('change', handleFileUpload);
+    document.getElementById('newInspectorFacsimile').addEventListener('change', handleFacsimilePreview);
+
+    // Закрытие dropdown при клике вне
+    document.addEventListener('click', e => {
+        const container = document.getElementById('sectionsContainer');
+        if (container && !container.contains(e.target)) {
+            document.getElementById('sectionsDropdown').classList.remove('open');
+        }
+    });
+
+    renderChecklist();
+    updateStatus();
+    updateProgress();
+});
+
+// ==================== ПРОЕКТЫ ====================
+function renderProjectsSelect() {
+    const sel = document.getElementById('projectSelect');
+    sel.innerHTML = '<option value="">— выберите проект —</option>';
+    projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.short || p.name.substring(0, 80);
+        opt.title = p.name;
+        if (state.projectId === p.id) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function openProjectModal() {
+    document.getElementById('newProjectName').value = '';
+    document.getElementById('newProjectShort').value = '';
+    document.getElementById('projectModal').classList.add('visible');
+}
+
+function addProject() {
+    const name = document.getElementById('newProjectName').value.trim();
+    const short = document.getElementById('newProjectShort').value.trim();
+    if (!name) { alert('Укажите наименование проекта'); return; }
+    const id = 'p_' + Date.now();
+    projects.push({ id, name, short: short || name.substring(0, 60) });
+    saveState();
+    renderProjectsSelect();
+    document.getElementById('projectSelect').value = id;
+    state.projectId = id;
+    saveState();
+    closeModal('projectModal');
+    updateStatus();
+}
+
+function importProjects() {
+    const input = document.getElementById('importProjectsFile');
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = evt => {
+            try {
+                let data;
+                if (file.name.endsWith('.csv')) {
+                    const lines = evt.target.result.split('\n').filter(l => l.trim());
+                    data = lines.slice(1).map(line => {
+                        const [name, short] = line.split(';').map(s => s.trim());
+                        return { id: 'p_' + Date.now() + Math.random(), name, short: short || name.substring(0, 60) };
+                    });
+                } else {
+                    data = JSON.parse(evt.target.result);
+                }
+                data.forEach(p => { if (!p.id) p.id = 'p_' + Date.now() + Math.random(); projects.push(p); });
+                saveState();
+                renderProjectsSelect();
+                alert(`Импортировано проектов: ${data.length}`);
+            } catch (err) {
+                alert('Ошибка импорта: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        input.value = '';
+    };
+    input.click();
+}
+
+// ==================== РАЗДЕЛЫ ====================
+function renderSectionsDropdown() {
+    const dd = document.getElementById('sectionsDropdown');
+    dd.innerHTML = '';
+    DOCUMENT_SECTIONS.forEach(group => {
+        const header = document.createElement('div');
+        header.className = 'multi-select-group-header';
+        header.textContent = group.group;
+        dd.appendChild(header);
+        group.sections.forEach(sec => {
+            const opt = document.createElement('div');
+            opt.className = 'multi-select-option' + (state.selectedSections.includes(sec.code) ? ' selected' : '');
+            opt.textContent = sec.name;
+            opt.dataset.code = sec.code;
+            opt.onclick = () => toggleSection(sec.code);
+            dd.appendChild(opt);
+        });
+    });
+    updateSectionsDisplay();
+}
+
+function toggleSectionsDropdown() {
+    document.getElementById('sectionsDropdown').classList.toggle('open');
+}
+
+function toggleSection(code) {
+    const idx = state.selectedSections.indexOf(code);
+    if (idx >= 0) state.selectedSections.splice(idx, 1);
+    else state.selectedSections.push(code);
+    saveState();
+    renderSectionsDropdown();
+    renderChecklist();
+    updateStatus();
+    updateProgress();
+}
+
+function removeSection(code, e) {
+    e.stopPropagation();
+    const idx = state.selectedSections.indexOf(code);
+    if (idx >= 0) state.selectedSections.splice(idx, 1);
+    saveState();
+    renderSectionsDropdown();
+    renderChecklist();
+    updateStatus();
+    updateProgress();
+}
+
+function updateSectionsDisplay() {
+    const display = document.querySelector('#sectionsContainer .multi-select-display');
+    const placeholder = document.getElementById('sectionsPlaceholder');
+    // Удаляем старые теги
+    display.querySelectorAll('.multi-select-tag').forEach(t => t.remove());
+    if (state.selectedSections.length === 0) {
+        placeholder.style.display = '';
+    } else {
+        placeholder.style.display = 'none';
+        state.selectedSections.forEach(code => {
+            const tag = document.createElement('span');
+            tag.className = 'multi-select-tag';
+            tag.innerHTML = `${code} <span class="remove-tag" onclick="removeSection('${code}', event)">&times;</span>`;
+            display.insertBefore(tag, placeholder);
+        });
+    }
+}
+
+// ==================== ПРОВЕРЯЮЩИЕ ====================
+function renderInspectorsSelect() {
+    const sel = document.getElementById('inspectorSelect');
+    sel.innerHTML = '<option value="">— выберите проверяющего —</option>';
+    inspectors.forEach(i => {
+        const opt = document.createElement('option');
+        opt.value = i.id;
+        const surname = i.name.split(' ')[0];
+        opt.textContent = `${surname} (${i.role})`;
+        opt.title = i.name;
+        if (state.inspectorId === i.id) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+function openInspectorModal() {
+    document.getElementById('newInspectorName').value = '';
+    document.getElementById('newInspectorRole').value = 'ГИП';
+    document.getElementById('newInspectorFacsimile').value = '';
+    document.getElementById('facsimilePreview').innerHTML = '<span class="placeholder">Предпросмотр факсимиле</span>';
+    document.getElementById('inspectorModal').classList.add('visible');
+}
+
+function handleFacsimilePreview(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+        document.getElementById('facsimilePreview').innerHTML = `<img src="${evt.target.result}" alt="facsimile">`;
+        document.getElementById('facsimilePreview').dataset.base64 = evt.target.result;
+        document.getElementById('facsimilePreview').dataset.filename = file.name;
+    };
+    reader.readAsDataURL(file);
+}
+
+function addInspector() {
+    const name = document.getElementById('newInspectorName').value.trim();
+    const role = document.getElementById('newInspectorRole').value;
+    if (!name) { alert('Укажите ФИО'); return; }
+    const id = 'i_' + Date.now();
+    const preview = document.getElementById('facsimilePreview');
+    const facsimile = preview.dataset.base64 || null;
+    inspectors.push({ id, name, role, facsimile });
+    if (facsimile) state.facsimiles[id] = facsimile;
+    saveState();
+    renderInspectorsSelect();
+    document.getElementById('inspectorSelect').value = id;
+    state.inspectorId = id;
+    saveState();
+    closeModal('inspectorModal');
+    updateStatus();
+}
+
+function importInspectors() {
+    const input = document.getElementById('importInspectorsFile');
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = evt => {
+            try {
+                let data;
+                if (file.name.endsWith('.csv')) {
+                    const lines = evt.target.result.split('\n').filter(l => l.trim());
+                    data = lines.slice(1).map(line => {
+                        const [name, role] = line.split(';').map(s => s.trim());
+                        return { id: 'i_' + Date.now() + Math.random(), name, role: role || 'Проверяющий', facsimile: null };
+                    });
+                } else {
+                    data = JSON.parse(evt.target.result);
+                }
+                data.forEach(i => { if (!i.id) i.id = 'i_' + Date.now() + Math.random(); inspectors.push(i); });
+                saveState();
+                renderInspectorsSelect();
+                alert(`Импортировано сотрудников: ${data.length}`);
+            } catch (err) {
+                alert('Ошибка импорта: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        input.value = '';
+    };
+    input.click();
+}
+
+// ==================== СТАТУС ====================
+function isFormComplete() {
+    return state.projectId && state.selectedSections.length > 0 && state.inspectorId && state.checkDate;
+}
+
+function updateStatus() {
+    const complete = isFormComplete();
+    const checkboxes = document.querySelectorAll('.nested input[type="checkbox"]');
+    const labels = document.querySelectorAll('.nested label');
+    const commentAreas = document.querySelectorAll('.comment-area textarea');
+    const btn = document.getElementById('generateCertBtn');
+    const indicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+
+    if (complete) {
+        checkboxes.forEach(cb => cb.disabled = false);
+        labels.forEach(lbl => lbl.classList.remove('disabled'));
+        commentAreas.forEach(ta => ta.disabled = false);
+        btn.disabled = false;
+        indicator.classList.add('active');
+        const insp = inspectors.find(i => i.id === state.inspectorId);
+        const proj = projects.find(p => p.id === state.projectId);
+        statusText.textContent = `✓ Проверку ведет: ${insp ? insp.name.split(' ')[0] + ' (' + insp.role + ')' : ''} | Проект: ${proj ? proj.short : ''} | Разделов: ${state.selectedSections.length}`;
+    } else {
+        checkboxes.forEach(cb => cb.disabled = true);
+        labels.forEach(lbl => lbl.classList.add('disabled'));
+        commentAreas.forEach(ta => ta.disabled = true);
+        btn.disabled = true;
+        indicator.classList.remove('active');
+        let missing = [];
+        if (!state.projectId) missing.push('проект');
+        if (state.selectedSections.length === 0) missing.push('разделы');
+        if (!state.inspectorId) missing.push('проверяющего');
+        if (!state.checkDate) missing.push('дату');
+        statusText.textContent = `⚠️ Заполните: ${missing.join(', ')}`;
+    }
+}
+
+// ==================== ЧЕК-ЛИСТ ====================
+function renderChecklist() {
+    const tree = document.getElementById('checklistTree');
+    if (state.selectedSections.length === 0) {
+        tree.innerHTML = '<div class="empty-state">Выберите разделы документации для формирования чек-листа</div>';
+        return;
+    }
+    // Фильтруем категории по выбранным разделам
+    const filtered = CHECKLIST_DATA.filter(cat => {
+        if (cat.sections.includes("ALL")) return true;
+        return cat.sections.some(s => state.selectedSections.includes(s));
+    });
+    if (filtered.length === 0) {
+        tree.innerHTML = '<div class="empty-state">Для выбранных разделов нет пунктов чек-листа</div>';
+        return;
+    }
+    let html = '';
+    filtered.forEach((cat, cIdx) => {
+        const catId = `cat_${cIdx}`;
+        html += `
+        <details class="section-category" open>
+            <summary>
+                <span>${cat.category}</span>
+                <span class="section-badge">${cat.checks.length} пунктов</span>
+            </summary>
+            <ul class="nested">
+                ${cat.checks.map((check, chIdx) => {
+                    const id = `${cIdx}_${chIdx}`;
+                    const checked = state.checks[id] ? 'checked' : '';
+                    const commentVisible = state.checks[id] ? 'visible' : '';
+                    const comment = state.comments[id] || '';
+                    const disabled = isFormComplete() ? '' : 'disabled';
+                    const labelClass = isFormComplete() ? '' : 'disabled';
+                    return `
+                        <li>
+                            <div class="check-row">
+                                <input type="checkbox" id="chk_${id}" ${checked} ${disabled} onchange="toggleCheck('${id}')">
+                                <label for="chk_${id}" class="${labelClass}">${check.text}</label>
+                                ${check.tag ? `<span class="meta ${check.tagClass || ''}">${check.tag}</span>` : ''}
+                            </div>
+                            <div class="comment-area ${commentVisible}" id="comment-area_${id}">
+                                <textarea id="comment_${id}" placeholder="Комментарий проверяющего..." ${disabled} oninput="updateComment('${id}', this.value)">${comment}</textarea>
+                            </div>
+                        </li>
+                    `;
+                }).join('')}
+            </ul>
+        </details>`;
+    });
+    tree.innerHTML = html;
+}
+
+function toggleCheck(id) {
+    const cb = document.getElementById(`chk_${id}`);
+    state.checks[id] = cb.checked;
+    const area = document.getElementById(`comment-area_${id}`);
+    if (cb.checked) area.classList.add('visible');
+    else {
+        const ta = document.getElementById(`comment_${id}`);
+        if (!ta.value.trim()) area.classList.remove('visible');
+    }
+    saveState();
+    updateProgress();
+}
+
+function updateComment(id, value) {
+    state.comments[id] = value;
+    saveState();
+}
+
+function updateProgress() {
+    const checkboxes = document.querySelectorAll('.nested input[type="checkbox"]');
+    const checked = document.querySelectorAll('.nested input[type="checkbox"]:checked');
+    const percent = checkboxes.length === 0 ? 0 : Math.round((checked.length / checkboxes.length) * 100);
+    document.getElementById('progressFill').style.width = percent + '%';
+    document.getElementById('progressText').innerText = percent + '%';
+}
+
+function toggleAll(expand) {
+    document.querySelectorAll('.section-category').forEach(d => {
+        if (expand) d.setAttribute('open', '');
+        else d.removeAttribute('open');
+    });
+}
+
+function resetChecklist() {
+    if (!confirm('Сбросить все отметки и комментарии?')) return;
+    state.checks = {};
+    state.comments = {};
+    saveState();
+    renderChecklist();
+    updateProgress();
+}
+
+// ==================== ФАЙЛ ЗАМЕЧАНИЙ ====================
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+        alert('Загрузите файл формата .docx');
+        return;
+    }
+    const fileInfo = {
+        name: file.name,
+        size: (file.size / 1024).toFixed(2) + ' KB',
+        date: new Date().toLocaleString('ru-RU'),
+        content: ''
+    };
+    const reader = new FileReader();
+    reader.onload = e => {
+        if (typeof mammoth !== 'undefined') {
+            mammoth.convertToHtml({ arrayBuffer: e.target.result })
+                .then(result => {
+                    fileInfo.content = result.value;
+                    displayFileInfo(fileInfo);
+                    state.fileInfo = fileInfo;
+                    saveState();
+                })
+                .catch(err => {
+                    fileInfo.content = '<p style="color: red;">Не удалось прочитать: ' + err.message + '</p>';
+                    displayFileInfo(fileInfo);
+                    state.fileInfo = fileInfo;
+                    saveState();
+                });
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function displayFileInfo(fi) {
+    document.getElementById('fileName').textContent = fi.name;
+    document.getElementById('fileSize').textContent = fi.size;
+    document.getElementById('fileDate').textContent = fi.date;
+    document.getElementById('fileInfo').classList.add('visible');
+    document.getElementById('toggleContentBtn').style.display = 'inline-block';
+    document.getElementById('fileContentBody').innerHTML = fi.content;
+}
+
+function toggleFileContent() {
+    document.getElementById('fileContent').classList.toggle('visible');
+}
+
+// ==================== УДОСТОВЕРЯЮЩИЙ ЛИСТ ====================
+function openCertModal() {
+    if (!isFormComplete()) {
+        alert('Заполните все обязательные поля');
+        return;
+    }
+    generateCertSheet();
+    document.getElementById('certModal').classList.add('visible');
+}
+
+function generateCertSheet() {
+    const project = projects.find(p => p.id === state.projectId);
+    const inspector = inspectors.find(i => i.id === state.inspectorId);
+    const date = new Date(state.checkDate).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+    const sections = state.selectedSections.join(', ');
+
+    // Сбор выполненных пунктов
+    const completedByCategory = [];
+    let totalChecked = 0, totalWithComments = 0;
+    CHECKLIST_DATA.forEach((cat, cIdx) => {
+        if (!cat.sections.includes("ALL") && !cat.sections.some(s => state.selectedSections.includes(s))) return;
+        const items = [];
+        cat.checks.forEach((check, chIdx) => {
+            const id = `${cIdx}_${chIdx}`;
+            if (state.checks[id]) {
+                totalChecked++;
+                const comment = state.comments[id] || '';
+                if (comment) totalWithComments++;
+                items.push({ text: check.text, tag: check.tag, comment });
+            }
+        });
+        if (items.length > 0) completedByCategory.push({ category: cat.category, items });
+    });
+
+    // Факсимиле
+    let signatureHTML;
+    if (inspector && inspector.facsimile) {
+        signatureHTML = `<img src="${inspector.facsimile}" alt="facsimile">`;
+    } else {
+        const surname = inspector ? inspector.name.split(' ')[0] : '';
+        signatureHTML = `<span class="facsimile-text">${surname}</span>`;
+    }
+
+    const certHTML = `
+        <h1>УДОСТОВЕРЯЮЩИЙ ЛИСТ</h1>
+        <h2>по результатам нормоконтроля проектной документации</h2>
+        <div class="cert-info">
+            <div class="info-row">
+                <span class="info-label">Наименование объекта:</span>
+                <span class="info-value">${project ? project.name : ''}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Дата проверки:</span>
+                <span class="info-value">${date}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Проверяемые разделы:</span>
+                <span class="info-value">${sections}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Проверяющий:</span>
+                <span class="info-value">${inspector ? inspector.name : ''} (${inspector ? inspector.role : ''})</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Всего проверено пунктов:</span>
+                <span class="info-value">${totalChecked}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Пунктов с комментариями:</span>
+                <span class="info-value">${totalWithComments}</span>
+            </div>
+        </div>
+        <div class="cert-sections">
+            <h3>Выполненные проверки:</h3>
+            ${completedByCategory.length > 0 ? completedByCategory.map(cat => `
+                <div style="margin-bottom: 15px;">
+                    <strong style="font-size: 0.95rem;">${cat.category}</strong>
+                    <ul>
+                        ${cat.items.map(item => `
+                            <li class="${item.comment ? 'with-comment' : ''}">
+                                ${item.text}
+                                ${item.tag ? `<span style="font-size: 0.75rem; color: #666;">[${item.tag}]</span>` : ''}
+                                ${item.comment ? `<div class="comment-text">💬 ${item.comment}</div>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('') : '<p style="color: #999; font-style: italic;">Нет выполненных пунктов</p>'}
+        </div>
+        <div class="cert-signature">
+            <div class="signature-block">
+                <div class="facsimile">${signatureHTML}</div>
+                <div class="signature-line">(подпись / ${inspector ? inspector.name.split(' ').slice(0, 2).join(' ') : ''})</div>
+            </div>
+            <div class="signature-block">
+                <div style="text-align: center; font-size: 0.9rem; margin-bottom: 5px;">${date}</div>
+                <div class="signature-line">(дата)</div>
+            </div>
+        </div>
+        <div class="cert-footer">
+            Документ сформирован автоматически в системе нормоконтроля МФР.<br>
+            ID: ${generateDocId()} | ${new Date().toLocaleString('ru-RU')}
+        </div>
+    `;
+    document.getElementById('certSheet').innerHTML = certHTML;
+}
+
+function generateDocId() {
+    return 'УЛ-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+// ==================== МОДАЛКИ ====================
+function closeModal(id) {
+    document.getElementById(id).classList.remove('visible');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('visible'); });
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.visible').forEach(m => m.classList.remove('visible'));
+});
+
+// ==================== СОХРАНЕНИЕ ====================
+function saveState() {
+    const toSave = {
+        ...state,
+        projects,
+        inspectors,
+        facsimiles: state.facsimiles
+    };
+    try {
+        localStorage.setItem('mfrChecklistState_v2', JSON.stringify(toSave));
+    } catch (e) {
+        console.warn('Не удалось сохранить:', e);
+    }
+}
+
+function loadState() {
+    try {
+        const saved = localStorage.getItem('mfrChecklistState_v2');
+        if (saved) {
+            const data = JSON.parse(saved);
+            state = { ...state, ...data };
+            if (data.projects && data.projects.length) projects = data.projects;
+            if (data.inspectors && data.inspectors.length) inspectors = data.inspectors;
+            if (data.facsimiles) {
+                state.facsimiles = data.facsimiles;
+                // Восстанавливаем факсимиле у проверяющих
+                inspectors.forEach(i => {
+                    if (data.facsimiles[i.id]) i.facsimile = data.facsimiles[i.id];
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('Ошибка загрузки:', e);
+    }
+}
+
+function exportData() {
+    const data = {
+        project: projects.find(p => p.id === state.projectId),
+        date: state.checkDate,
+        sections: state.selectedSections,
+        inspector: inspectors.find(i => i.id === state.inspectorId),
+        totalChecked: Object.values(state.checks).filter(v => v).length,
+        comments: Object.entries(state.comments).filter(([k, v]) => v.trim()),
+        exportedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `checklist_${(data.project ? data.project.short : 'project').replace(/\s+/g, '_')}_${state.checkDate}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    alert('✓ Данные сохранены');
+}
+</script>
+
+</body>
+</html>
